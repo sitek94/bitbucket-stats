@@ -5,6 +5,7 @@ import { relations } from 'drizzle-orm'
 export const users = sqliteTable('users', {
   uuid: text().primaryKey(), // Original Bitbucket ID
   display_name: text().notNull(),
+  excluded: integer({ mode: 'boolean' }).default(false),
 })
 
 export const usersRelations = relations(users, ({ many }) => ({

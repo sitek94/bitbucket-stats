@@ -12,7 +12,7 @@ export class OraLogger implements Logger {
 
   info(message: string, ...args: unknown[]): void {
     this.spinner.stop()
-    console.info(chalk.blue(`${message}`), ...this.formatArgs(args))
+    console.info(chalk.white(`${message}`), ...this.formatArgs(args))
   }
 
   warn(message: string, ...args: unknown[]): void {

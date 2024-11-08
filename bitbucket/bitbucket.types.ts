@@ -1,7 +1,7 @@
-/**
- * @file Bitbucket API types
- * @link https://dac-static.atlassian.com/cloud/bitbucket/swagger.v3.json?_v=2.300.71-0.1311.0
- */
+////////////////////////////////////////
+// Bitbucket API types
+// https://dac-static.atlassian.com/cloud/bitbucket/swagger.v3.json?_v=2.300.71-0.1311.0
+////////////////////////////////////////
 
 type Link = {
   href: string
@@ -179,6 +179,15 @@ export type PaginatedResponse<T> = {
 }
 
 ////////////////////////////////////////
+// Local types
+////////////////////////////////////////
+
+export type BitbucketConfig = {
+  username: string
+  password: string
+  workspace: string
+  repository: string
+}
 
 export type GetPullRequestsQueryOptions = {
   from?: Date

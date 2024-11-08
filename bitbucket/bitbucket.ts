@@ -5,6 +5,7 @@ import type {
   BitbucketPullRequest,
   BitbucketPullRequestDetailed,
   GetPullRequestsQueryOptions,
+  BitbucketConfig,
 } from './bitbucket.types'
 
 const bitbucketConfigSchema = z.object({
@@ -23,15 +24,14 @@ export class Bitbucket {
 
   private bitbucketApiUrl = 'https://api.bitbucket.org/2.0'
 
-  constructor(config?: { username: string; password: string; workspace: string; repository: string }) {
-    const { username, password, workspace, repository } = bitbucketConfigSchema.parse(
-      config || {
-        username: process.env.BITBUCKET_USERNAME!,
-        password: process.env.BITBUCKET_APP_PASSWORD!,
-        workspace: process.env.BITBUCKET_WORKSPACE!,
-        repository: process.env.BITBUCKET_REPOSITORY!,
-      },
-    )
+  constructor(config?: Partial<BitbucketConfig>) {
+    const { username, password, workspace, repository } = bitbucketConfigSchema.parse({
+      username: process.env.BITBUCKET_USERNAME!,
+      password: process.env.BITBUCKET_APP_PASSWORD!,
+      workspace: process.env.BITBUCKET_WORKSPACE!,
+      repository: process.env.BITBUCKET_REPOSITORY!,
+      ...config,
+    })
 
     this.username = username
     this.password = password
