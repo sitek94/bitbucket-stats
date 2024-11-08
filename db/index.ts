@@ -9,7 +9,8 @@ import * as schema from './schema'
 import { eq } from 'drizzle-orm'
 
 const client = createClient({ url: Bun.env.DB_FILE_NAME! })
-const db = drizzle({ client, schema })
+
+export const db = drizzle({ client, schema })
 
 const insertUserSchema = createSelectSchema(users).extend({})
 const insertPullRequestSchema = createSelectSchema(pullRequests).extend({})
