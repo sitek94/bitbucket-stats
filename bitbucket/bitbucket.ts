@@ -4,17 +4,14 @@ import type {
   PullRequestComment,
   BitbucketPullRequest,
   BitbucketPullRequestDetailed,
+  GetPullRequestsQueryOptions,
 } from './bitbucket.types'
 
 const bitbucketConfigSchema = z.object({
-  auth: z.object({
-    username: z.string(),
-    password: z.string(),
-  }),
-  project: z.object({
-    workspace: z.string(),
-    repository: z.string(),
-  }),
+  username: z.string(),
+  password: z.string(),
+  workspace: z.string(),
+  repository: z.string(),
 })
 
 export class Bitbucket {
@@ -26,42 +23,41 @@ export class Bitbucket {
 
   private bitbucketApiUrl = 'https://api.bitbucket.org/2.0'
 
-  constructor(bitbucketConfig: {
-    auth: { username: string; password: string }
-    project: { workspace: string; repository: string }
-  }) {
-    const { auth, project } = bitbucketConfigSchema.parse(bitbucketConfig)
+  constructor(config?: { username: string; password: string; workspace: string; repository: string }) {
+    const { username, password, workspace, repository } = bitbucketConfigSchema.parse(
+      config || {
+        username: process.env.BITBUCKET_USERNAME!,
+        password: process.env.BITBUCKET_APP_PASSWORD!,
+        workspace: process.env.BITBUCKET_WORKSPACE!,
+        repository: process.env.BITBUCKET_REPOSITORY!,
+      },
+    )
 
-    this.username = auth.username
-    this.password = auth.password
-    this.workspace = project.workspace
-    this.repository = project.repository
+    this.username = username
+    this.password = password
+    this.workspace = workspace
+    this.repository = repository
     this.baseUrl = `${this.bitbucketApiUrl}/repositories/${this.workspace}/${this.repository}`
   }
 
   async crawlPullRequests({
+    queryOptions,
     onBeforeProcessingPullRequest,
     onAfterProcessingPullRequest,
-    ...options
   }: {
-    from?: Date
-    to?: Date
-    withComments?: boolean
-    pageSize?: number
-
     onBeforeProcessingPullRequest?: (
       pullRequest: BitbucketPullRequest,
       index: number,
       total: number,
     ) => Promise<{ shouldProcess: boolean }>
-
     onAfterProcessingPullRequest?: (
       pullRequest: BitbucketPullRequestDetailed & { comments: PullRequestComment[] },
       index: number,
       total: number,
     ) => Promise<void>
+    queryOptions: GetPullRequestsQueryOptions
   }) {
-    const pullRequests = await this.getPullRequests(options)
+    const pullRequests = await this.getPullRequests(queryOptions)
 
     for (const [index, pullRequest] of pullRequests.entries()) {
       const { shouldProcess } = (await onBeforeProcessingPullRequest?.(pullRequest, index, pullRequests.length)) || {}
@@ -97,26 +93,29 @@ export class Bitbucket {
   }
 
   async getPullRequests({
-    from = new Date(),
+    from,
     to,
-    withComments = true,
+    withCommentsOnly = false,
     pageSize = 50,
-  }: {
-    from?: Date
-    to?: Date
-    withComments?: boolean
-    pageSize?: number
-  }) {
+    state = ['OPEN', 'MERGED', 'DECLINED', 'SUPERSEDED'],
+  }: GetPullRequestsQueryOptions) {
     const pullRequests: BitbucketPullRequest[] = []
 
     const filters = [
-      `pagelen=${pageSize}`,
       from && `created_on>=${from.toISOString()}`,
       to && `created_on<=${to.toISOString()}`,
-      withComments && 'comment_count>0',
+      withCommentsOnly && 'comment_count>0',
     ].filter(Boolean)
 
-    const response = await this.get<PaginatedResponse<BitbucketPullRequest>>(`/pullrequests?${filters.join('&')}`)
+    const query = [
+      ...((state.length && state.map((s) => `state=${s}`)) || []),
+      pageSize && `pagelen=${pageSize}`,
+      filters.length && `q=${filters.join(' AND ')}`,
+    ]
+      .filter(Boolean)
+      .join('&')
+
+    const response = await this.get<PaginatedResponse<BitbucketPullRequest>>(`/pullrequests?${query}`)
 
     pullRequests.push(...response.values)
 

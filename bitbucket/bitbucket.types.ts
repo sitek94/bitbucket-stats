@@ -177,3 +177,13 @@ export type PaginatedResponse<T> = {
   previous?: string
   values: T[]
 }
+
+////////////////////////////////////////
+
+export type GetPullRequestsQueryOptions = {
+  from?: Date
+  to?: Date
+  withCommentsOnly?: boolean
+  pageSize?: number
+  state?: ('OPEN' | 'MERGED' | 'DECLINED' | 'SUPERSEDED')[]
+}
