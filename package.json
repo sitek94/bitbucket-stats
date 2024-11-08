@@ -1,5 +1,6 @@
 {
   "name": "bitbucket-stats",
+  "description": "CLI tool for collecting and analyzing Bitbucket pull request metrics with SQLite storage",
   "module": "cli.ts",
   "type": "module",
   "author": "Maciek Sitkowski",

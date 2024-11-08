@@ -38,4 +38,3 @@ bun db:studio
 - [Bun - A fast all-in-one JavaScript runtime](https://bun.sh/)
 - [Drizzle ORM - SQLite Getting Started Guide](https://orm.drizzle.team/docs/get-started/sqlite-new)
 - [Bitbucket REST API - Pull Requests Documentation](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/#api-group-pullrequests)
--
