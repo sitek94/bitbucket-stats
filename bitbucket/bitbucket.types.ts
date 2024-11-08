@@ -43,12 +43,7 @@ type Repository = {
 type Branch = {
   name: string
   merge_strategies: Array<
-    | 'merge_commit'
-    | 'squash'
-    | 'fast_forward'
-    | 'squash_fast_forward'
-    | 'rebase_fast_forward'
-    | 'rebase_merge'
+    'merge_commit' | 'squash' | 'fast_forward' | 'squash_fast_forward' | 'rebase_fast_forward' | 'rebase_merge'
   >
   default_merge_strategy: string
 }
@@ -109,15 +104,17 @@ export type BitbucketPullRequest = {
   reason: string | null
   created_on: string // ISO8601 timestamp
   updated_on: string // ISO8601 timestamp
+}
+
+// Participants and reviewers are not exposed
+// https://jira.atlassian.com/browse/BCLOUD-22389
+export type BitbucketPullRequestDetailed = BitbucketPullRequest & {
   reviewers: BitbucketUser[]
   participants: Participant[]
 }
 
 export type PullRequestUpdate = Partial<
-  Pick<
-    BitbucketPullRequest,
-    'title' | 'summary' | 'state' | 'reason' | 'close_source_branch'
-  >
+  Pick<BitbucketPullRequest, 'title' | 'summary' | 'state' | 'reason' | 'close_source_branch'>
 >
 
 export type MergeStrategy =

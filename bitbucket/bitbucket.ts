@@ -1,13 +1,12 @@
-import {z} from 'zod'
+import { z } from 'zod'
 import type {
   PaginatedResponse,
   PullRequestComment,
   BitbucketPullRequest,
-  BitbucketUser,
-  Participant,
+  BitbucketPullRequestDetailed,
 } from './bitbucket.types'
 
-const configSchema = z.object({
+const bitbucketConfigSchema = z.object({
   auth: z.object({
     username: z.string(),
     password: z.string(),
@@ -27,11 +26,11 @@ export class Bitbucket {
 
   private bitbucketApiUrl = 'https://api.bitbucket.org/2.0'
 
-  constructor(config: {
-    auth: {username: string; password: string}
-    project: {workspace: string; repository: string}
+  constructor(bitbucketConfig: {
+    auth: { username: string; password: string }
+    project: { workspace: string; repository: string }
   }) {
-    const {auth, project} = configSchema.parse(config)
+    const { auth, project } = bitbucketConfigSchema.parse(bitbucketConfig)
 
     this.username = auth.username
     this.password = auth.password
@@ -41,65 +40,55 @@ export class Bitbucket {
   }
 
   async crawlPullRequests({
-    from,
-    to,
-    withComments,
-    pageSize,
-    onPullRequestAuthor,
-    onPullRequest,
-    onComment,
-    onParticipant,
-  }: Parameters<Bitbucket['getPullRequests']>[0] & {
-    onPullRequestAuthor: (author: BitbucketUser) => void
-    onPullRequest: (pullRequest: BitbucketPullRequest) => void
-    onComment: (comment: PullRequestComment) => void
-    onParticipant: (participant: Participant) => void
+    onBeforeProcessingPullRequest,
+    onAfterProcessingPullRequest,
+    ...options
+  }: {
+    from?: Date
+    to?: Date
+    withComments?: boolean
+    pageSize?: number
+
+    onBeforeProcessingPullRequest?: (
+      pullRequest: BitbucketPullRequest,
+      index: number,
+      total: number,
+    ) => Promise<{ shouldProcess: boolean }>
+
+    onAfterProcessingPullRequest?: (
+      pullRequest: BitbucketPullRequestDetailed & { comments: PullRequestComment[] },
+      index: number,
+      total: number,
+    ) => Promise<void>
   }) {
-    const pullRequests = await this.getPullRequests({
-      from,
-      to,
-      withComments,
-      pageSize,
-    })
+    const pullRequests = await this.getPullRequests(options)
 
-    for (const {id: pullRequestId} of pullRequests) {
-      const pullRequest = await this.getPullRequest(pullRequestId)
-
-      onPullRequestAuthor(pullRequest.author)
-      onPullRequest(pullRequest)
-
-      const comments = await this.getPullRequestComments(pullRequestId)
-
-      for (const comment of comments) {
-        onComment(comment)
+    for (const [index, pullRequest] of pullRequests.entries()) {
+      const { shouldProcess } = (await onBeforeProcessingPullRequest?.(pullRequest, index, pullRequests.length)) || {}
+      if (!shouldProcess) {
+        continue
       }
 
-      for (const participant of pullRequest.participants) {
-        onParticipant(participant)
-      }
+      const detailedPullRequest = await this.getPullRequest(pullRequest.id)
+      const comments = await this.getPullRequestComments(detailedPullRequest.id)
+      const pullRequestWithComments = { ...detailedPullRequest, comments }
+
+      await onAfterProcessingPullRequest?.(pullRequestWithComments, index, pullRequests.length)
     }
   }
 
   async getPullRequestComments(prId: number) {
     const comments: PullRequestComment[] = []
 
-    const response = await this.get<PaginatedResponse<PullRequestComment>>(
-      `/pullrequests/${prId}/comments?pagelen=100`,
-    )
-
-    console.log(`Fetched ${response.values.length} comments`)
+    const response = await this.get<PaginatedResponse<PullRequestComment>>(`/pullrequests/${prId}/comments?pagelen=100`)
 
     comments.push(...response.values)
 
     let nextPageUrl = response.next
 
     while (nextPageUrl) {
-      const nextResponse = await this.fetchWithAuth<
-        PaginatedResponse<PullRequestComment>
-      >(nextPageUrl)
+      const nextResponse = await this.fetchWithAuth<PaginatedResponse<PullRequestComment>>(nextPageUrl)
       comments.push(...nextResponse.values)
-
-      console.log(`Fetched ${nextResponse.values.length} comments`)
 
       nextPageUrl = nextResponse.next
     }
@@ -113,17 +102,12 @@ export class Bitbucket {
     withComments = true,
     pageSize = 50,
   }: {
-    from: Date
-    to: Date
-    withComments: boolean
-    pageSize: number
+    from?: Date
+    to?: Date
+    withComments?: boolean
+    pageSize?: number
   }) {
-    // Participants and reviewers are not exposed
-    // https://jira.atlassian.com/browse/BCLOUD-22389
-    const pullRequests: Omit<
-      BitbucketPullRequest,
-      'participants' | 'reviewers'
-    >[] = []
+    const pullRequests: BitbucketPullRequest[] = []
 
     const filters = [
       `pagelen=${pageSize}`,
@@ -132,23 +116,15 @@ export class Bitbucket {
       withComments && 'comment_count>0',
     ].filter(Boolean)
 
-    const response = await this.get<PaginatedResponse<BitbucketPullRequest>>(
-      `/pullrequests?${filters.join('&')}`,
-    )
-
-    console.log(`Fetched ${response.values.length} pull requests`)
+    const response = await this.get<PaginatedResponse<BitbucketPullRequest>>(`/pullrequests?${filters.join('&')}`)
 
     pullRequests.push(...response.values)
 
     let nextPageUrl = response.next
 
     while (nextPageUrl) {
-      const nextResponse = await this.fetchWithAuth<
-        PaginatedResponse<BitbucketPullRequest>
-      >(nextPageUrl)
+      const nextResponse = await this.fetchWithAuth<PaginatedResponse<BitbucketPullRequest>>(nextPageUrl)
       pullRequests.push(...nextResponse.values)
-
-      console.log(`Fetched ${nextResponse.values.length} pull requests`)
 
       nextPageUrl = nextResponse.next
     }
@@ -157,7 +133,7 @@ export class Bitbucket {
   }
 
   async getPullRequest(id: number) {
-    return this.get<BitbucketPullRequest>(`/pullrequests/${id}`)
+    return this.get<BitbucketPullRequestDetailed>(`/pullrequests/${id}`)
   }
 
   async getCommits() {
@@ -188,9 +164,7 @@ export class Bitbucket {
     if (!response.ok) {
       const body = await response.text()
 
-      throw new Error(
-        `Failed to fetch ${url}: ${response.status} ${response.statusText}\n${body}`,
-      )
+      throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}\n${body}`)
     }
 
     return (await response.json()) as TResponse
