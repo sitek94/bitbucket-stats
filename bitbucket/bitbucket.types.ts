@@ -67,7 +67,7 @@ type SourceDestination = {
   commit: Commit
 }
 
-type Account = {
+export type BitbucketUser = {
   uuid: string
   display_name: string
   nickname?: string
@@ -82,8 +82,8 @@ type Account = {
 type ParticipantRole = 'PARTICIPANT' | 'REVIEWER'
 type ParticipantState = 'approved' | 'changes_requested' | null
 
-type Participant = {
-  user: Account
+export type Participant = {
+  user: BitbucketUser
   role: ParticipantRole
   approved: boolean
   state: ParticipantState
@@ -98,18 +98,18 @@ export type BitbucketPullRequest = {
   rendered: Rendered
   summary: RenderedContent
   state: 'OPEN' | 'MERGED' | 'DECLINED' | 'SUPERSEDED'
-  author: Account
+  author: BitbucketUser
   source: SourceDestination
   destination: SourceDestination
   merge_commit: Commit | null
   comment_count: number
   task_count: number
   close_source_branch: boolean
-  closed_by: Account | null
+  closed_by: BitbucketUser | null
   reason: string | null
   created_on: string // ISO8601 timestamp
   updated_on: string // ISO8601 timestamp
-  reviewers: Account[]
+  reviewers: BitbucketUser[]
   participants: Participant[]
 }
 
@@ -145,7 +145,7 @@ type CommentResolution = {
   type: string
   resolved: boolean
   resolved_on?: string
-  resolved_by?: Account
+  resolved_by?: BitbucketUser
 }
 
 export type PullRequestComment = {
@@ -154,7 +154,7 @@ export type PullRequestComment = {
   created_on: string
   updated_on: string
   content: CommentContent
-  user: Account
+  user: BitbucketUser
   deleted: boolean
   parent?: PullRequestComment
   inline?: {

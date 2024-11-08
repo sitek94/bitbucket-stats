@@ -3,6 +3,8 @@ import type {
   PaginatedResponse,
   PullRequestComment,
   BitbucketPullRequest,
+  BitbucketUser,
+  Participant,
 } from './bitbucket.types'
 
 const configSchema = z.object({
@@ -38,6 +40,46 @@ export class Bitbucket {
     this.baseUrl = `${this.bitbucketApiUrl}/repositories/${this.workspace}/${this.repository}`
   }
 
+  async crawlPullRequests({
+    from,
+    to,
+    withComments,
+    pageSize,
+    onPullRequestAuthor,
+    onPullRequest,
+    onComment,
+    onParticipant,
+  }: Parameters<Bitbucket['getPullRequests']>[0] & {
+    onPullRequestAuthor: (author: BitbucketUser) => void
+    onPullRequest: (pullRequest: BitbucketPullRequest) => void
+    onComment: (comment: PullRequestComment) => void
+    onParticipant: (participant: Participant) => void
+  }) {
+    const pullRequests = await this.getPullRequests({
+      from,
+      to,
+      withComments,
+      pageSize,
+    })
+
+    for (const {id: pullRequestId} of pullRequests) {
+      const pullRequest = await this.getPullRequest(pullRequestId)
+
+      onPullRequestAuthor(pullRequest.author)
+      onPullRequest(pullRequest)
+
+      const comments = await this.getPullRequestComments(pullRequestId)
+
+      for (const comment of comments) {
+        onComment(comment)
+      }
+
+      for (const participant of pullRequest.participants) {
+        onParticipant(participant)
+      }
+    }
+  }
+
   async getPullRequestComments(prId: number) {
     const comments: PullRequestComment[] = []
 
@@ -65,11 +107,33 @@ export class Bitbucket {
     return comments
   }
 
-  async getPullRequests({from}: {from: Date}) {
-    const pullRequests: BitbucketPullRequest[] = []
+  async getPullRequests({
+    from = new Date(),
+    to,
+    withComments = true,
+    pageSize = 50,
+  }: {
+    from: Date
+    to: Date
+    withComments: boolean
+    pageSize: number
+  }) {
+    // Participants and reviewers are not exposed
+    // https://jira.atlassian.com/browse/BCLOUD-22389
+    const pullRequests: Omit<
+      BitbucketPullRequest,
+      'participants' | 'reviewers'
+    >[] = []
+
+    const filters = [
+      `pagelen=${pageSize}`,
+      from && `created_on>=${from.toISOString()}`,
+      to && `created_on<=${to.toISOString()}`,
+      withComments && 'comment_count>0',
+    ].filter(Boolean)
 
     const response = await this.get<PaginatedResponse<BitbucketPullRequest>>(
-      `/pullrequests?pagelen=50&q=created_on>=${from.toISOString()} AND comment_count>0`,
+      `/pullrequests?${filters.join('&')}`,
     )
 
     console.log(`Fetched ${response.values.length} pull requests`)
@@ -90,6 +154,10 @@ export class Bitbucket {
     }
 
     return pullRequests
+  }
+
+  async getPullRequest(id: number) {
+    return this.get<BitbucketPullRequest>(`/pullrequests/${id}`)
   }
 
   async getCommits() {
