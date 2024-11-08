@@ -1,4 +1,9 @@
 import {z} from 'zod'
+import type {
+  PaginatedResponse,
+  PullRequestComment,
+  BitbucketPullRequest,
+} from './bitbucket.types'
 
 const configSchema = z.object({
   auth: z.object({
@@ -10,13 +15,6 @@ const configSchema = z.object({
     repository: z.string(),
   }),
 })
-
-type PaginatedResponse<T> = {
-  values: T[]
-  next?: string
-  page: number
-  pagelen: number
-}
 
 export class Bitbucket {
   private username: string
@@ -41,16 +39,6 @@ export class Bitbucket {
   }
 
   async getPullRequestComments(prId: number) {
-    type PullRequestComment = {
-      id: number
-      content: {
-        raw: string
-      }
-      user: {
-        display_name: string
-      }
-    }
-
     const comments: PullRequestComment[] = []
 
     const response = await this.get<PaginatedResponse<PullRequestComment>>(
@@ -78,17 +66,9 @@ export class Bitbucket {
   }
 
   async getPullRequests({from}: {from: Date}) {
-    type PullRequest = {
-      author: {
-        display_name: string
-      }
-      id: number
-      [key: string]: any
-    }
+    const pullRequests: BitbucketPullRequest[] = []
 
-    const pullRequests: PullRequest[] = []
-
-    const response = await this.get<PaginatedResponse<PullRequest>>(
+    const response = await this.get<PaginatedResponse<BitbucketPullRequest>>(
       `/pullrequests?pagelen=50&q=created_on>=${from.toISOString()} AND comment_count>0`,
     )
 
@@ -100,7 +80,7 @@ export class Bitbucket {
 
     while (nextPageUrl) {
       const nextResponse = await this.fetchWithAuth<
-        PaginatedResponse<PullRequest>
+        PaginatedResponse<BitbucketPullRequest>
       >(nextPageUrl)
       pullRequests.push(...nextResponse.values)
 

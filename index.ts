@@ -16,13 +16,12 @@ const pullRequests = await bitbucket.getPullRequests({
   from: subDays(new Date(), 90),
 })
 
-const users = new Map<
-  string,
-  {
-    comments: number
-    commentsLength: number
-  }
->()
+type UserStats = {
+  comments: number
+  commentsLength: number
+}
+
+const users = new Map<string, UserStats>()
 
 for (const pullRequest of pullRequests) {
   if (!users.has(pullRequest.author.display_name)) {
