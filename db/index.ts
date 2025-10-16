@@ -12,7 +12,7 @@ const client = createClient({ url: Bun.env.DB_FILE_NAME! })
 
 export const db = drizzle({ client, schema })
 
-const insertUserSchema = createSelectSchema(users).extend({}).omit({ excluded: true })
+const insertUserSchema = createSelectSchema(users).extend({}).omit({ excluded: true, team: true })
 const insertPullRequestSchema = createSelectSchema(pullRequests).extend({})
 const insertPullRequestParticipantSchema = createSelectSchema(pullRequestParticipants).extend({}).omit({ id: true })
 const insertPullRequestCommentSchema = createSelectSchema(pullRequestComments).extend({})

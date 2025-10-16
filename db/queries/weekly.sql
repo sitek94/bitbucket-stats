@@ -1,6 +1,10 @@
+.headers on
+.mode csv
+
 WITH CommentsData AS (
   SELECT 
     users.display_name AS User,
+    users.team AS Team,
     strftime('%Y-%W', pull_request_comments.created_at) AS Week,  -- Weekly grouping
     COUNT(pull_request_comments.id) AS CommentsCount,
     SUM(LENGTH(pull_request_comments.content)) AS CommentsLength
@@ -11,14 +15,16 @@ WITH CommentsData AS (
   LEFT JOIN 
     pull_requests ON pull_request_comments.pull_request_id = pull_requests.id
   WHERE 
-    DATE(pull_request_comments.created_at) > DATE('now', '-300 days')
+    DATE(pull_request_comments.created_at) > DATE('now', '-180 days')
     AND pull_requests.author_id != users.uuid  -- Exclude user’s own PRs
+    AND users.excluded IS NOT 1  -- Exclude excluded users
   GROUP BY 
-    User, Week
+    User, Team, Week
 ),
 ApprovalsData AS (
   SELECT
     users.display_name AS User,
+    users.team AS Team,
     strftime('%Y-%W', pull_requests.created_at) AS Week,  -- Weekly grouping
     COUNT(DISTINCT pull_request_participants.pull_request_id) AS ApprovedCount
   FROM 
@@ -29,13 +35,15 @@ ApprovalsData AS (
     pull_requests ON pull_request_participants.pull_request_id = pull_requests.id
   WHERE 
     pull_request_participants.approved = 1
-    AND DATE(pull_requests.created_at) > DATE('now', '-300 days')
+    AND DATE(pull_requests.created_at) > DATE('now', '-180 days')
     AND pull_requests.author_id != users.uuid  -- Exclude user’s own PRs
+    AND users.excluded IS NOT 1  -- Exclude excluded users
   GROUP BY 
-    User, Week
+    User, Team, Week
 )
 
 SELECT 
+  CommentsData.Team,
   CommentsData.User,
   CommentsData.Week,
   CommentsData.CommentsCount,
@@ -44,6 +52,8 @@ SELECT
 FROM 
   CommentsData
 LEFT JOIN 
-  ApprovalsData ON CommentsData.User = ApprovalsData.User AND CommentsData.Week = ApprovalsData.Week
+  ApprovalsData ON CommentsData.User = ApprovalsData.User 
+                 AND CommentsData.Team = ApprovalsData.Team
+                 AND CommentsData.Week = ApprovalsData.Week
 ORDER BY 
   CommentsData.User, CommentsData.Week;

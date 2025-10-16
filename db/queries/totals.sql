@@ -5,7 +5,6 @@ WITH CommentsData AS (
   SELECT 
     users.display_name AS User,
     users.team AS Team,
-    strftime('%Y-%m', pull_request_comments.created_at) AS Month,  -- Monthly grouping
     COUNT(pull_request_comments.id) AS CommentsCount,
     SUM(LENGTH(pull_request_comments.content)) AS CommentsLength
   FROM 
@@ -19,13 +18,12 @@ WITH CommentsData AS (
     AND pull_requests.author_id != users.uuid  -- Exclude user’s own PRs
     AND users.excluded IS NOT 1  -- Exclude excluded users
   GROUP BY 
-    User, Team, Month
+    User, Team
 ),
 ApprovalsData AS (
   SELECT
     users.display_name AS User,
     users.team AS Team,
-    strftime('%Y-%m', pull_requests.created_at) AS Month,  -- Monthly grouping
     COUNT(DISTINCT pull_request_participants.pull_request_id) AS ApprovedCount
   FROM 
     users
@@ -39,13 +37,12 @@ ApprovalsData AS (
     AND pull_requests.author_id != users.uuid  -- Exclude user’s own PRs
     AND users.excluded IS NOT 1  -- Exclude excluded users
   GROUP BY 
-    User, Team, Month
+    User, Team
 )
 
 SELECT 
   CommentsData.Team,
   CommentsData.User,
-  CommentsData.Month,
   CommentsData.CommentsCount,
   CommentsData.CommentsLength,
   IFNULL(ApprovalsData.ApprovedCount, 0) AS ApprovedCount
@@ -54,6 +51,5 @@ FROM
 LEFT JOIN 
   ApprovalsData ON CommentsData.User = ApprovalsData.User 
                  AND CommentsData.Team = ApprovalsData.Team
-                 AND CommentsData.Month = ApprovalsData.Month
 ORDER BY 
-  CommentsData.User, CommentsData.Month;
+  CommentsData.User;

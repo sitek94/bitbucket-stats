@@ -49,11 +49,11 @@ const to = toDaysAgo ? subDays(today, parseInt(toDaysAgo)) : undefined
 // Confirm the operation
 const confirmOperation = await confirm({
   message: `Ready to seed DB with following parameters:\n
-    Repository: ${workspace}/${repository}
-    From: ${from.toDateString()}
-    To: ${to ? to.toDateString() : `${today.toDateString()} (today)`}
-    
-    Continue?`,
+  Repository: ${workspace}/${repository}
+  From: ${from.toDateString()}
+  To: ${to ? to.toDateString() : `${today.toDateString()} (today)`}
+  
+  Continue?`,
   default: true,
 })
 
