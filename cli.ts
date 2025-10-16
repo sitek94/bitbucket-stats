@@ -91,9 +91,15 @@ if (action === 'seed') {
     process.exit(1)
   }
 
-  const repository = await select({
-    message: 'Select repository to export:',
-    choices: repositories.map((repo) => ({ name: repo, value: repo })),
+  const selectedRepositories = await checkbox({
+    message: 'Select repositories to export:',
+    choices: repositories.map((repo) => ({ name: repo, value: repo, checked: true })),
+    validate: (answer) => {
+      if (answer.length === 0) {
+        return 'Please select at least one repository'
+      }
+      return true
+    },
   })
 
   const exportTypes = await checkbox({
@@ -112,13 +118,22 @@ if (action === 'seed') {
   })
 
   console.log('\n📊 Exporting statistics...\n')
-  const results = await exportStats({
-    repository,
-    types: exportTypes as ('totals' | 'monthly' | 'weekly')[],
-  })
+
+  const allResults: { repository: string; type: string; file: string }[] = []
+
+  for (const repository of selectedRepositories) {
+    console.log(`Exporting ${repository}...`)
+    const results = await exportStats({
+      repository,
+      types: exportTypes as ('totals' | 'monthly' | 'weekly')[],
+    })
+    allResults.push(...results.map((r) => ({ repository, ...r })))
+  }
 
   console.log('\n🎉 Export completed successfully!')
   console.log('\nFiles created:')
-  results.forEach(({ file }) => console.log(`  - ${file}`))
+  allResults.forEach(({ repository, type, file }) => {
+    console.log(`  - ${file} (${repository} - ${type})`)
+  })
   process.exit(0)
 }
