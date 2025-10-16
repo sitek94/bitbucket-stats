@@ -14,6 +14,7 @@ WITH CommentsData AS (
     AND pull_requests.author_id != users.uuid  -- Exclude user's own PRs
     AND users.excluded IS NOT 1  -- Exclude excluded users
     AND pull_requests.repository = ?
+    AND (? = '' OR INSTR(',' || ? || ',', ',' || users.display_name || ',') = 0)  -- Exclude ignored users
   GROUP BY 
     User
 ),
@@ -33,6 +34,7 @@ ApprovalsData AS (
     AND pull_requests.author_id != users.uuid  -- Exclude user's own PRs
     AND users.excluded IS NOT 1  -- Exclude excluded users
     AND pull_requests.repository = ?
+    AND (? = '' OR INSTR(',' || ? || ',', ',' || users.display_name || ',') = 0)  -- Exclude ignored users
   GROUP BY 
     User
 )

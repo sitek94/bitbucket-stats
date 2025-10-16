@@ -23,15 +23,23 @@ export async function exportStats({
     // Directory already exists, ignore
   }
 
+  // Get ignored users from env (comma-separated list)
+  const ignoredUsers = Bun.env.IGNORED_USERS || ''
+
   const results: { type: ExportType; file: string }[] = []
 
   for (const type of types) {
     const queryPath = join('db', 'queries', `${type}.sql`)
     const query = readFileSync(queryPath, 'utf-8')
 
-    // Run query with repository parameter (passed twice for both CTEs)
+    // Run query with parameters:
+    // - repository, ignoredUsers (twice) for CommentsData CTE
+    // - repository, ignoredUsers (twice) for ApprovalsData CTE
     const stmt = db.query(query)
-    const rows = stmt.all(repository, repository) as Record<string, any>[]
+    const rows = stmt.all(repository, ignoredUsers, ignoredUsers, repository, ignoredUsers, ignoredUsers) as Record<
+      string,
+      any
+    >[]
 
     // Convert to CSV
     if (rows.length === 0) {
