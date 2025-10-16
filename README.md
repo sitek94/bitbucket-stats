@@ -15,8 +15,8 @@ cp .env.example .env
 # Install dependencies
 bun install
 
-# Initialize the database
-bun db:push
+# Setup the database
+bun setup
 
 # Run the CLI tool
 bun cli
@@ -44,13 +44,6 @@ Generate CSV reports from stored data:
 - Choose time period (days back)
 - Select export types (totals, monthly, weekly breakdowns)
 - Exports to `output/` directory
-
-All repositories are stored in a single database, making it easy to compare metrics across projects.
-
-```bash
-# Open the database in a GUI
-bun db:studio
-```
 
 ## Resources
 
