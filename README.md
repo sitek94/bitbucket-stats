@@ -22,19 +22,27 @@ bun db:push
 bun cli
 ```
 
-The CLI offers two main functions:
+The CLI offers three main functions:
 
-### 1. Seed Database
-Fetch and store pull request data from Bitbucket:
-- Select repository name
-- Choose date range
+### 1. Fetch Repository Data
+Import pull request data from a Bitbucket repository:
+- Enter repository name
+- Choose date range (from/to)
 - Fetches all pull requests with comments, reviewers, and participants
 - Stores data in local SQLite database
 
-### 2. Export Statistics
+### 2. Sync Repositories
+Incrementally update existing repositories with latest data:
+- Automatically detects all repositories in database
+- Finds the most recent pull request date for each
+- Fetches new data from that date to today
+- Perfect for daily/weekly updates without re-fetching everything
+
+### 3. Export Statistics
 Generate CSV reports from stored data:
-- Select repository to analyze
-- Choose export types (totals, monthly, weekly breakdowns)
+- Select repositories to analyze (multi-select)
+- Choose time period (days back)
+- Select export types (totals, monthly, weekly breakdowns)
 - Exports to `output/` directory
 
 All repositories are stored in a single database, making it easy to compare metrics across projects.

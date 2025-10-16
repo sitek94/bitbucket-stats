@@ -10,13 +10,14 @@ import { sql } from 'drizzle-orm'
 const action = await select({
   message: 'What would you like to do?',
   choices: [
-    { name: 'Seed database', value: 'seed' },
-    { name: 'Export statistics', value: 'export' },
+    { name: 'Fetch repository data', value: 'fetch', description: 'Import pull requests from a repository' },
+    { name: 'Sync repositories', value: 'sync', description: 'Update existing repositories with latest data' },
+    { name: 'Export statistics', value: 'export', description: 'Generate CSV reports' },
   ],
 })
 
-if (action === 'seed') {
-  // Seed flow
+if (action === 'fetch') {
+  // Fetch repository data flow
   const repository = await input({
     message: 'Enter repository name:',
     default: process.env.BITBUCKET_REPOSITORY,
@@ -59,7 +60,7 @@ if (action === 'seed') {
   const to = toDaysAgo ? subDays(today, parseInt(toDaysAgo)) : undefined
 
   const confirmOperation = await confirm({
-    message: `Ready to seed DB with following parameters:\n
+    message: `Ready to fetch data with following parameters:\n
   Repository: ${workspace}/${repository}
   From: ${from.toDateString()}
   To: ${to ? to.toDateString() : `${today.toDateString()} (today)`}
@@ -69,14 +70,60 @@ if (action === 'seed') {
   })
 
   if (confirmOperation) {
-    console.log('\n🌱 Seeding DB...\n')
+    console.log('\n📥 Fetching pull request data...\n')
     await seed({ repository, from, to })
-    console.log('\n🎉 DB seeded successfully')
+    console.log('\n🎉 Data fetched successfully')
     process.exit(0)
   } else {
     console.log('\n🚫 Operation cancelled')
     process.exit(0)
   }
+} else if (action === 'sync') {
+  // Sync repositories flow
+  console.log('\n🔄 Syncing repositories...\n')
+
+  // Get all repositories with their most recent PR creation date
+  const repositories = await db
+    .selectDistinct({
+      repository: sql<string>`repository`,
+      mostRecentDate: sql<string>`MAX(created_at)`,
+    })
+    .from(sql`pull_requests`)
+    .groupBy(sql`repository`)
+    .orderBy(sql`repository`)
+
+  if (repositories.length === 0) {
+    console.log('❌ No repositories found in database. Use "Fetch repository data" first.')
+    process.exit(1)
+  }
+
+  console.log(`Found ${repositories.length} repository(ies) to sync:\n`)
+  repositories.forEach(({ repository, mostRecentDate }) => {
+    const date = new Date(mostRecentDate)
+    console.log(`  - ${repository} (most recent PR: ${date.toDateString()})`)
+  })
+
+  const confirmSync = await confirm({
+    message: '\nSync all repositories with latest data?',
+    default: true,
+  })
+
+  if (!confirmSync) {
+    console.log('\n🚫 Operation cancelled')
+    process.exit(0)
+  }
+
+  console.log()
+
+  for (const { repository, mostRecentDate } of repositories) {
+    console.log(`\n📥 Syncing ${repository}...\n`)
+    const from = new Date(mostRecentDate)
+
+    await seed({ repository, from, to: undefined })
+  }
+
+  console.log('\n🎉 All repositories synced successfully')
+  process.exit(0)
 } else if (action === 'export') {
   // Export flow
   // Get list of repositories from DB
