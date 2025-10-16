@@ -11,7 +11,7 @@ WITH CommentsData AS (
   LEFT JOIN 
     pull_requests ON pull_request_comments.pull_request_id = pull_requests.id
   WHERE 
-    DATE(pull_request_comments.created_at) > DATE('now', '-180 days')
+    DATE(pull_request_comments.created_at) > ?
     AND pull_requests.author_id != users.uuid  -- Exclude user's own PRs
     AND users.excluded IS NOT 1  -- Exclude excluded users
     AND pull_requests.repository = ?
@@ -32,7 +32,7 @@ ApprovalsData AS (
     pull_requests ON pull_request_participants.pull_request_id = pull_requests.id
   WHERE 
     pull_request_participants.approved = 1
-    AND DATE(pull_requests.created_at) > DATE('now', '-180 days')
+    AND DATE(pull_requests.created_at) > ?
     AND pull_requests.author_id != users.uuid  -- Exclude user's own PRs
     AND users.excluded IS NOT 1  -- Exclude excluded users
     AND pull_requests.repository = ?

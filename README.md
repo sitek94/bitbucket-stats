@@ -4,6 +4,10 @@ A CLI tool that crawls your Bitbucket repository's pull requests, comments, and 
 
 ## Quick Start
 
+Make sure you have [Bun](https://bun.sh/) installed.
+
+Then run the following commands:
+
 ```bash
 # Create .env file and fill in Bitbucket credentials
 cp .env.example .env
@@ -17,8 +21,6 @@ bun db:push
 # Run the CLI tool
 bun cli
 ```
-
-![cli preview](./docs/cli-preview.png)
 
 The CLI offers two main functions:
 

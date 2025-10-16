@@ -7,9 +7,11 @@ type ExportType = 'totals' | 'monthly' | 'weekly'
 export async function exportStats({
   repository,
   types = ['totals', 'monthly', 'weekly'],
+  daysBack = 180,
 }: {
   repository: string
   types?: ExportType[]
+  daysBack?: number
 }) {
   const dbPath = Bun.env.DB_FILE_NAME!.replace('file:', '')
   const db = new Database(dbPath, { readonly: true })
@@ -26,6 +28,11 @@ export async function exportStats({
   // Get ignored users from env (comma-separated list)
   const ignoredUsers = Bun.env.IGNORED_USERS || ''
 
+  // Calculate cutoff date (YYYY-MM-DD format for SQLite)
+  const cutoffDate = new Date()
+  cutoffDate.setDate(cutoffDate.getDate() - daysBack)
+  const cutoffDateStr = cutoffDate.toISOString().split('T')[0]
+
   const results: { type: ExportType; file: string }[] = []
 
   for (const type of types) {
@@ -33,13 +40,19 @@ export async function exportStats({
     const query = readFileSync(queryPath, 'utf-8')
 
     // Run query with parameters:
-    // - repository, ignoredUsers (twice) for CommentsData CTE
-    // - repository, ignoredUsers (twice) for ApprovalsData CTE
+    // - cutoffDate, repository, ignoredUsers (twice) for CommentsData CTE
+    // - cutoffDate, repository, ignoredUsers (twice) for ApprovalsData CTE
     const stmt = db.query(query)
-    const rows = stmt.all(repository, ignoredUsers, ignoredUsers, repository, ignoredUsers, ignoredUsers) as Record<
-      string,
-      any
-    >[]
+    const rows = stmt.all(
+      cutoffDateStr,
+      repository,
+      ignoredUsers,
+      ignoredUsers,
+      cutoffDateStr,
+      repository,
+      ignoredUsers,
+      ignoredUsers,
+    ) as Record<string, any>[]
 
     // Convert to CSV
     if (rows.length === 0) {

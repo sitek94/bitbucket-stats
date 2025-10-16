@@ -102,6 +102,16 @@ if (action === 'seed') {
     },
   })
 
+  const daysBack = await input({
+    message: 'How many days of history to include?',
+    default: '180',
+    validate: (value) => {
+      const num = parseInt(value)
+      if (isNaN(num) || num < 1) return 'Please enter a valid number greater than 0'
+      return true
+    },
+  })
+
   const exportTypes = await checkbox({
     message: 'Select export types:',
     choices: [
@@ -126,6 +136,7 @@ if (action === 'seed') {
     const results = await exportStats({
       repository,
       types: exportTypes as ('totals' | 'monthly' | 'weekly')[],
+      daysBack: parseInt(daysBack),
     })
     allResults.push(...results.map((r) => ({ repository, ...r })))
   }
