@@ -36,6 +36,7 @@ export async function seed({ repository, from, to }: { repository: string; from:
         title: pullRequest.title,
         description: pullRequest.summary.raw,
         branch: pullRequest.source.branch.name,
+        repository,
         author_id: pullRequest.author.uuid,
         created_at: pullRequest.created_on,
         updated_at: pullRequest.updated_on,

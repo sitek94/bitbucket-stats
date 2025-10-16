@@ -20,6 +20,7 @@ export const pullRequests = sqliteTable('pull_requests', {
   title: text().notNull(),
   description: text().notNull(),
   branch: text().notNull(),
+  repository: text().notNull(), // Repository name (e.g., 'neo-backend')
   author_id: text()
     .references(() => users.uuid)
     .notNull(),

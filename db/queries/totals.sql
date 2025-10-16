@@ -1,10 +1,6 @@
-.headers on
-.mode csv
-
 WITH CommentsData AS (
   SELECT 
     users.display_name AS User,
-    users.team AS Team,
     COUNT(pull_request_comments.id) AS CommentsCount,
     SUM(LENGTH(pull_request_comments.content)) AS CommentsLength
   FROM 
@@ -15,15 +11,15 @@ WITH CommentsData AS (
     pull_requests ON pull_request_comments.pull_request_id = pull_requests.id
   WHERE 
     DATE(pull_request_comments.created_at) > DATE('now', '-180 days')
-    AND pull_requests.author_id != users.uuid  -- Exclude user’s own PRs
+    AND pull_requests.author_id != users.uuid  -- Exclude user's own PRs
     AND users.excluded IS NOT 1  -- Exclude excluded users
+    AND pull_requests.repository = ?
   GROUP BY 
-    User, Team
+    User
 ),
 ApprovalsData AS (
   SELECT
     users.display_name AS User,
-    users.team AS Team,
     COUNT(DISTINCT pull_request_participants.pull_request_id) AS ApprovedCount
   FROM 
     users
@@ -34,14 +30,14 @@ ApprovalsData AS (
   WHERE 
     pull_request_participants.approved = 1
     AND DATE(pull_requests.created_at) > DATE('now', '-180 days')
-    AND pull_requests.author_id != users.uuid  -- Exclude user’s own PRs
+    AND pull_requests.author_id != users.uuid  -- Exclude user's own PRs
     AND users.excluded IS NOT 1  -- Exclude excluded users
+    AND pull_requests.repository = ?
   GROUP BY 
-    User, Team
+    User
 )
 
 SELECT 
-  CommentsData.Team,
   CommentsData.User,
   CommentsData.CommentsCount,
   CommentsData.CommentsLength,
@@ -49,7 +45,6 @@ SELECT
 FROM 
   CommentsData
 LEFT JOIN 
-  ApprovalsData ON CommentsData.User = ApprovalsData.User 
-                 AND CommentsData.Team = ApprovalsData.Team
+  ApprovalsData ON CommentsData.User = ApprovalsData.User
 ORDER BY 
   CommentsData.User;
